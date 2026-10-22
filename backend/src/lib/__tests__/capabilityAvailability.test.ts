@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { mkdtemp, rm } from 'node:fs/promises';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
 import { callCapability, streamChatCapability, checkedFakePramaanClient, setPramaanClientForTests, CAPABILITY_NOT_AVAILABLE_MESSAGE, type PramaanClient } from '../pramaan';
 import { completeWithProvider } from '../llm/providers';
 import { verifyCaseLawCitations, searchCaseLawCaseLaw, getCaseLawCaseOpinions } from '../caseLaw';
@@ -11,7 +12,7 @@ import { sanitizeAssistantSseChunk } from '../../modules/chat/engine/streaming';
 import { chatTurnAuditEvents } from '../audit';
 const call = vi.fn(); let root: string;
 const refusal = () => Object.assign(new Error('Synthetic internal upstream detail and stack must stay private.'), { code: 'upstream_unavailable' });
-beforeEach(async () => { root = await mkdtemp(path.resolve('../.data/verification/law-unavailable-')); vi.stubEnv('LEGAL_HANDLE_ROOT', root); call.mockReset(); setPramaanClientForTests({ call } as PramaanClient); });
+beforeEach(async () => { root = await mkdtemp(path.join(tmpdir(), 'law-unavailable-')); vi.stubEnv('LEGAL_HANDLE_ROOT', root); call.mockReset(); setPramaanClientForTests({ call } as PramaanClient); });
 afterEach(async () => { setPramaanClientForTests(); vi.unstubAllEnvs(); await rm(root, { recursive: true, force: true }); });
 it('uses messages and clamps tiny reply limits in the adapter and direct client', async () => {
  call.mockResolvedValue({ text: 'Ready.' });
