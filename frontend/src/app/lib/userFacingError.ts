@@ -1,0 +1,221 @@
+import { LegalAssistantApiError, reportedUpstreamMessage } from "./legalAssistantApi";
+
+export function userFacingApiError(
+    error: unknown,
+    fallback: string,
+): string {
+    // The 5xx codes with something to say (a migration to apply, a server
+    // to wait for) get their fixed frontend message (legalAssistantApi.ts).
+    if (error instanceof LegalAssistantApiError && error.code) {
+        const upstream = reportedUpstreamMessage(error.code);
+        if (upstream) return upstream;
+    }
+    if (
+        error instanceof LegalAssistantApiError &&
+        error.status >= 400 &&
+        error.status < 500 &&
+        error.message
+    ) {
+        return error.message;
+    }
+    return fallback;
+}
+
+export function errorCode(error: unknown): string | null {
+    if (!error || typeof error !== "object" || !("code" in error)) {
+        return null;
+    }
+    return typeof error.code === "string" ? error.code : null;
+}
+
+export function knownErrorCodeMessage(
+    error: unknown,
+    messages: Readonly<Record<string, string>>,
+    fallback: string,
+): string {
+    const code = errorCode(error);
+    return code ? messages[code] ?? fallback : fallback;
+}
+
+// ---------------------------------------------------------------------------
+// Notification layer
+// ---------------------------------------------------------------------------
+//
+// `describeError` (shared) decides what to say; this file decides how the
+// web app shows it: a toast with an honest "Retry" and, for failures the
+// user cannot fix, a "Contact support" link that opens a pre-filled email.
+
+import {
+    buildSupportMailto,
+    describeError,
+    type DescribeErrorOptions,
+    type UserFacingError,
+} from "@/shared/lib/userError";
+import { showToast, type ToastAction } from "@/shared/lib/toastStore";
+import { isReported, reportError } from "@/app/lib/errorReporting";
+
+export {
+    SUPPORT_PATH,
+    UserVisibleError,
+    describeError,
+    isAbortError,
+    isNetworkError,
+    type UserErrorKind,
+    type UserFacingError,
+} from "@/shared/lib/userError";
+
+export interface NotifyErrorOptions extends DescribeErrorOptions {
+    /** Re-run the failed action. Offered only when a retry is honest. */
+    onRetry?: () => void | Promise<void>;
+    /** Collapse repeats (polling loops, autosave) into one toast. */
+    dedupeKey?: string;
+    /** Force the support link on or off regardless of classification. */
+    support?: boolean;
+    /** Extra actions beyond Retry. */
+    actions?: ToastAction[];
+    /** Extra text for the support email body, e.g. which document. */
+    supportNote?: string;
+}
+
+/** The pre-filled support email for a described failure on this page. */
+export function supportMailtoFor(
+    error: UserFacingError,
+    note?: string,
+): string {
+    return buildSupportMailto(error, {
+        page: typeof window !== "undefined" ? window.location.href : undefined,
+        product: "web",
+        note,
+    });
+}
+
+/** Screens that already are the way back in; "Sign in" would be a no-op. */
+const AUTH_ROUTES = [
+    "/login",
+    "/signup",
+    "/reset-password",
+    "/forgot-password",
+    "/verify-mfa",
+    "/auth/callback",
+    "/sso",
+];
+
+/**
+ * Is the user looking at a sign-in screen? Those screens are the way back
+ * in and render their own inline error, so session failures and "Sign in"
+ * actions are not raised over them.
+ */
+export function isOnAuthRoute(): boolean {
+    // No window (server render) reads as "/", which is not an auth route.
+    const pathname = typeof window === "undefined" ? "" : window.location.pathname;
+    const path = pathname.replace(/\/+$/, "") || "/";
+    return AUTH_ROUTES.some(
+        (route) => path === route || path.startsWith(`${route}/`),
+    );
+}
+
+/**
+ * Where "Sign in" goes, or null when the user is already on an auth screen
+ * (and would be sent to the page they are looking at).
+ */
+function signInActionHref(): string | null {
+    if (typeof window === "undefined" || isOnAuthRoute()) return null;
+    const { pathname, search } = window.location;
+    return `/login?next=${encodeURIComponent(`${pathname}${search}`)}`;
+}
+
+
+function reportRealFault(
+    error: unknown,
+    described: UserFacingError,
+    action: string | undefined,
+): void {
+    const isFault =
+        !isReported(error) &&
+        (described.kind === "unknown" || described.kind === "server");
+    if (!isFault) return;
+    reportError(error, { tags: { component: "notify", action } });
+}
+
+/**
+ * Codes the server side already reported and phrased for users (legalAssistantApi.ts:
+ * schema_out_of_date, upstream_unavailable) keep that one sentence in a toast
+ * too, so the error copy for them has a single source. A call site's own
+ * `codeMessages` entry still wins.
+ */
+function withReportedUpstreamMessage(error: unknown, options: NotifyErrorOptions): NotifyErrorOptions {
+    // Duck-typed like describeError: the code is read off any error shape,
+    // and legalAssistantApi's table is consulted only when there is a code to look up.
+    const raw = error && typeof error === "object" ? (error as { code?: unknown }).code : null;
+    const code = typeof raw === "string" ? raw : null;
+    const upstream = code ? reportedUpstreamMessage(code) : null;
+    if (!code || !upstream) return options;
+    return { ...options, codeMessages: { [code]: upstream, ...options.codeMessages } };
+}
+
+/**
+ * Show a failure to the user. Returns the description so the caller can
+ * also render it inline, or `null` when the failure is a cancellation the
+ * user caused and does not need to hear about.
+ */
+export function notifyError(
+    error: unknown,
+    options: NotifyErrorOptions = {},
+): UserFacingError | null {
+    const described = describeError(error, withReportedUpstreamMessage(error, options));
+    if (described.kind === "aborted") return null;
+
+    reportRealFault(error, described, options.action);
+
+
+    // a 4xx or a cancellation the user just saw is not an incident. The one
+    // above already reported anything that was a real fault.
+    if (process.env.NODE_ENV !== "production") {
+        console.warn("[user-error]", described.title, described.cause);
+    }
+
+    const actions: ToastAction[] = [...(options.actions ?? [])];
+    if (options.onRetry && described.retryable) {
+        actions.push({
+            label: "Retry",
+            onClick: async () => {
+                try {
+                    await options.onRetry?.();
+                } catch (retryError) {
+                    notifyError(retryError, options);
+                }
+            },
+        });
+    }
+    // "Your session has expired" with nothing to click leaves the user to
+    // find the way back to the login screen themselves.
+    const signInHref = signInActionHref();
+    if (described.kind === "unauthenticated" && signInHref) {
+        actions.push({
+            label: "Sign in",
+            onClick: () => window.location.assign(signInHref),
+        });
+    }
+    const wantsSupport = options.support ?? described.supportable;
+
+    showToast({
+        tone: "error",
+        title: described.title,
+        message: described.message,
+        actions,
+        supportHref: wantsSupport
+            ? supportMailtoFor(described, options.supportNote)
+            : undefined,
+        dedupeKey: options.dedupeKey,
+    });
+
+    return described;
+}
+
+export function notifySuccess(message: string, title?: string): string {
+    return showToast({ tone: "success", title, message });
+}
+
+export function notifyInfo(message: string, title?: string): string {
+    return showToast({ tone: "info", title, message });
+}

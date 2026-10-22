@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+cd "$(dirname "$0")"
+docker info >/dev/null 2>&1 || { echo 'Start Docker, then run ./start again.'; exit 1; }
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/workspace" -w /workspace node:22-slim node scripts/setup-local.mjs /workspace
+mkdir -p .runtime
+chmod 700 .runtime
+if [ ! -f .runtime/database.env ]; then (umask 077; : > .runtime/database.env); fi
+docker compose build backend
+docker compose run --rm --no-deps --user "$(id -u):$(id -g)" managed-setup
+docker compose up --build --wait --wait-timeout 300
+printf '\nOpen http://localhost:3000 (local mail: http://localhost:8025).\nStop with: docker compose down\n'

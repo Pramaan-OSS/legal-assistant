@@ -1,0 +1,13 @@
+services:
+  backend:
+    environment:
+      - PRAMAAN_API_KEY=fake-verification-key
+      - PRAMAAN_BASE_URL=http://host.docker.internal:3417
+    extra_hosts:
+      - host.docker.internal:host-gateway
+  workflow-sync:
+    environment:
+      - PRAMAAN_API_KEY=fake-verification-key
+      - PRAMAAN_BASE_URL=http://host.docker.internal:3417
+    extra_hosts:
+      - host.docker.internal:host-gateway

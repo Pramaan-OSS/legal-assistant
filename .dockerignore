@@ -1,0 +1,20 @@
+**/node_modules
+**/dist
+**/.next
+**/.open-next
+**/out
+**/build
+**/.env
+**/.env.*
+**/*.log
+**/coverage
+**/test-results
+**/playwright-report
+.git
+# The private SDK ships its pinned runtime and declarations.
+!packages/pramaan-sdk/dist
+!packages/pramaan-sdk/dist/**
+
+**/.data
+**/.scratch
+**/.runtime

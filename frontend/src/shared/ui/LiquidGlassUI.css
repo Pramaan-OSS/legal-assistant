@@ -1,0 +1,6 @@
+
+:where(.liquid-glass-float) { background: var(--glass); border: 1px solid var(--glass-edge); border-radius: var(--r-island); box-shadow: var(--glass-shadow); backdrop-filter: blur(var(--blur)) saturate(1.1); }
+:where(.liquid-glass-flat, .liquid-glass-subtle, .liquid-glass-modal, .liquid-glass-translucent) { background: linear-gradient(180deg, var(--card-top), var(--card-bottom)); border: 1px solid var(--card-edge); border-radius: var(--r-card); box-shadow: var(--card-shadow); }
+.liquid-glass-hover:hover, .liquid-glass-group-hover { background: var(--btn-glass-hover); }
+.liquid-glass-selected, .liquid-glass-pressed, .liquid-glass-modal-row-selected { background: var(--surface-sunk); }
+.liquid-glass-translucent-action, .liquid-glass-translucent-action:hover { background: var(--btn-glass); box-shadow: var(--btn-shadow); }

@@ -1,0 +1,298 @@
+# Legal Assistant local stack. Set PRAMAAN_API_KEY in .env.
+services:
+  db:
+    image: supabase/postgres:17.6.1.136
+    ports:
+      - 127.0.0.1:${DB_PORT:-54322}:5432
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+      JWT_SECRET: ${LOCAL_JWT_SECRET:?Run ./start first}
+      JWT_EXP: 3600
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./docker/db-init/roles.sql:/docker-entrypoint-initdb.d/zz-roles.sql:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  database-prepare:
+    image: supabase/postgres:17.6.1.136
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .runtime/database.env
+        format: raw
+    volumes:
+      - ./docker/db-init/prepare.sql:/prepare.sql:ro
+    entrypoint: [bash, -c]
+    command: ['psql "$$APP_DATABASE_DIRECT_URL" -v ON_ERROR_STOP=1 -f /prepare.sql >/dev/null 2>&1 || { echo "Database preparation could not finish."; exit 1; }']
+    restart: no
+  auth:
+    image: supabase/gotrue:v2.189.0
+    env_file:
+      - path: .runtime/database.env
+        format: raw
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: "9999"
+      API_EXTERNAL_URL: ${SUPABASE_PUBLIC_URL:-http://localhost:54321}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_SITE_URL: ${APP_URL:-${FRONTEND_URL:-http://localhost:3000}}
+      GOTRUE_URI_ALLOW_LIST: "*"
+      GOTRUE_JWT_SECRET: ${LOCAL_JWT_SECRET:?Run ./start first}
+      GOTRUE_JWT_EXP: "3600"
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role,app_owner
+      GOTRUE_PASSWORD_MIN_LENGTH: "10"
+      GOTRUE_DISABLE_SIGNUP: ${GOTRUE_DISABLE_SIGNUP:-false}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      GOTRUE_MAILER_AUTOCONFIRM: ${GOTRUE_MAILER_AUTOCONFIRM:-false}
+      GOTRUE_SMTP_HOST: mailpit
+      GOTRUE_SMTP_PORT: "1025"
+      GOTRUE_SMTP_ADMIN_EMAIL: admin@legal-assistant.local
+      GOTRUE_SMTP_SENDER_NAME: Legal Assistant
+      GOTRUE_MAILER_URLPATHS_CONFIRMATION: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_RECOVERY: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_INVITE: /auth/v1/verify
+      GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE: /auth/v1/verify
+      GOTRUE_HOOK_SEND_EMAIL_ENABLED: ${SEND_EMAIL_VIA_PRAMAAN:-false}
+      GOTRUE_HOOK_SEND_EMAIL_URI: ${APP_URL:-${FRONTEND_URL:-http://localhost:3000}}/api/auth/email-hook
+      GOTRUE_HOOK_SEND_EMAIL_SECRETS: ${SEND_EMAIL_HOOK_SECRET:?Run ./start first}
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:9999/health]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    depends_on:
+      database-prepare:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    restart: unless-stopped
+    extra_hosts:
+      - host.docker.internal:host-gateway
+  rest:
+    image: postgrest/postgrest:v14.12
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .runtime/database.env
+        format: raw
+    environment:
+      PGRST_DB_SCHEMAS: public
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${LOCAL_JWT_SECRET:?Run ./start first}
+    restart: unless-stopped
+  gateway:
+    image: nginx:alpine
+    ports:
+      - 127.0.0.1:${GATEWAY_PORT:-54321}:8000
+    volumes:
+      - ./supabase/gateway.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - auth
+      - rest
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q --spider http://127.0.0.1:8000/rest/v1/ || exit 1
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+  db-init:
+    image: supabase/postgres:17.6.1.136
+    depends_on:
+      db:
+        condition: service_healthy
+      auth:
+        condition: service_started
+    env_file:
+      - path: .runtime/database.env
+        format: raw
+    environment:
+      MIGRATIONS_DIR: /migrations
+    volumes:
+      - ./backend/schema.sql:/schema.sql:ro
+      - ./backend/migrations:/migrations:ro
+      - ./backend/scripts/migrate.sh:/migrate.sh:ro
+      - ./docker/db-init/adopt-ledger.sh:/adopt-ledger.sh:ro
+    entrypoint:
+      - bash
+      - -c
+    command:
+      - >
+        until psql "$$DB" -tAc "select to_regclass('auth.users')" | grep -q
+        auth; do
+          echo "waiting for auth schema..."; sleep 2;
+        done
+
+        if ! psql "$$DB" -tAc "select to_regclass('public.user_profiles')" |
+        grep -q user_profiles; then
+          # New volume: schema.sql is the complete schema, and it records every
+          # migration it already contains in the ledger.
+          psql "$$DB" -v ON_ERROR_STOP=1 -f /schema.sql || exit 1;
+        elif ! psql "$$DB" -tAc "select to_regclass('public.schema_migrations')"
+        | grep -q schema_migrations; then
+          # Volume from before the ledger: replay one last time the way
+          # db-init used to on every start, then record it.
+          bash /adopt-ledger.sh || exit 1;
+        fi
+
+        bash /migrate.sh up || exit 1;
+
+        psql "$$DB" -c "grant usage on schema public to service_role;
+          grant all privileges on all tables in schema public to service_role;
+          grant all privileges on all sequences in schema public to service_role;
+          notify pgrst, 'reload schema';"
+    restart: no
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - 127.0.0.1:${MAILPIT_PORT:-8025}:8025
+      - 127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+    restart: unless-stopped
+  redis:
+    image: redis:7-alpine
+    command:
+      - redis-server
+      - --appendonly
+      - yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+  managed-setup:
+    image: legal-assistant-backend:local
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PRAMAAN_API_KEY: ${PRAMAAN_API_KEY:-}
+      PRAMAAN_FAKE_AUTH: ${PRAMAAN_FAKE_AUTH:-0}
+      PRAMAAN_FAKE: ${PRAMAAN_FAKE:-0}
+      MANAGED_RUNTIME_DIR: /app/.runtime
+      APP_URL: ${APP_URL:-http://localhost:3000}
+    volumes:
+      - ./.runtime:/app/.runtime
+    command: [node, dist/jobs/prepareManagedServices.js]
+    profiles: [setup]
+  workflow-sync:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: legal-assistant-backend:local
+    env_file:
+      - path: .env
+        required: false
+      - path: .runtime/database.env
+        format: raw
+    environment:
+      - PRAMAAN_API_KEY=${PRAMAAN_API_KEY:-}
+      - PRAMAAN_FAKE_AUTH=${PRAMAAN_FAKE_AUTH:-0}
+      - PRAMAAN_FAKE=${PRAMAAN_FAKE:-0}
+      - SUPABASE_URL=http://gateway:8000
+      - STORAGE_FS_ROOT=/app/.data/storage
+    command:
+      - npm
+      - run
+      - sync:workflows
+    depends_on:
+      db-init:
+        condition: service_completed_successfully
+      gateway:
+        condition: service_healthy
+    restart: no
+    volumes:
+      - ./.runtime:/app/.runtime
+      - storage_data:/app/.data/storage
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: legal-assistant-backend:local
+    ports:
+      - 127.0.0.1:${BACKEND_PORT:-3001}:3001
+    env_file:
+      - path: .env
+        required: false
+      - path: .runtime/database.env
+        format: raw
+    environment:
+      - LOCAL_MAILBOX_ENABLED=1
+      - APP_URL=${APP_URL:-http://localhost:3000}
+      - PORT=3001
+      - NODE_ENV=${NODE_ENV:-development}
+      - FRONTEND_URL=${APP_URL:-${FRONTEND_URL:-http://localhost:3000}}
+      - API_PUBLIC_URL=${API_PUBLIC_URL:-http://localhost:3000/api}
+      - PRAMAAN_API_KEY=${PRAMAAN_API_KEY:-}
+      - PRAMAAN_FAKE_AUTH=${PRAMAAN_FAKE_AUTH:-0}
+      - PRAMAAN_FAKE=${PRAMAAN_FAKE:-0}
+      - SUPABASE_URL=http://gateway:8000
+      - SUPABASE_PUBLISHABLE_KEY=${SUPABASE_PUBLISHABLE_KEY:?Run ./start first}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+      - ASYNC_DOCUMENT_CONVERSION=${ASYNC_DOCUMENT_CONVERSION:-true}
+      - ASYNC_TABULAR_EXTRACTION=${ASYNC_TABULAR_EXTRACTION:-true}
+      - WORKERS_MODE=${WORKERS_MODE:-thread}
+      - STORAGE_FS_ROOT=/app/.data/storage
+      - DOWNLOAD_SIGNING_SECRET=${DOWNLOAD_SIGNING_SECRET:?Run ./start first}
+      - SEND_EMAIL_HOOK_SECRET=${SEND_EMAIL_HOOK_SECRET:?Run ./start first}
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      workflow-sync:
+        condition: service_completed_successfully
+      auth:
+        condition: service_started
+      rest:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./.runtime:/app/.runtime
+      - storage_data:/app/.data/storage
+  frontend:
+    volumes:
+      - ./.runtime/public-auth.json:/app/.runtime/public-auth.json:ro
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      - API_BASE_URL=${API_BASE_URL:-http://backend:3001}
+      - PRAMAAN_CONFIGURED=${PRAMAAN_API_KEY:+1}
+    ports:
+      - 127.0.0.1:${FRONTEND_PORT:-3000}:3000
+    depends_on:
+      - backend
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    restart: unless-stopped
+volumes:
+  db_data: null
+  storage_data: null
+  redis_data: null

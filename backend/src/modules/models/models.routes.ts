@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { requireAuth } from '../../middleware/auth';
+import { listLocalModels, listConfiguredModels, listQualityModels } from './models.service';
+import { asyncRoute, routerErrorHandler } from '../../middleware/asyncRoute';
+import { createServerSupabase } from '../../lib/supabase';
+export const modelsRouter = Router();
+modelsRouter.get('/qualities', requireAuth, asyncRoute(async (_req, res) => res.json({ models: await listQualityModels() })));
+modelsRouter.get('/local', requireAuth, asyncRoute(async (_req, res) => res.json({ models: await listLocalModels() })));
+modelsRouter.get('/configured', requireAuth, asyncRoute(async (_req, res) => res.json({ models: await listConfiguredModels(createServerSupabase(), res.locals.userId) })));
+modelsRouter.use(routerErrorHandler('[models]'));

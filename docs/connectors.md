@@ -1,0 +1,11 @@
+# Connected accounts and remote services
+
+Settings offers Files, Mail, Calendar, Team chat, Notes, Tables and Work tracking. Discover actions and their input definitions through apps.catalog.search; use cursor/nextCursor for explicit Load more. New search pages use paid requests and are cached for the session. Connection management uses apps.connection.start, apps.connections.list and apps.connection.revoke; actions use apps.action.execute. A copied file handle goes directly to document.parse, without fetching a staging address or uploading again. Failed copies preserve the action result and never repeat its effect.
+
+The consent notice states the access granted before redirect. The service chooses its permissions; this app cannot narrow them. Each action has an enable switch. Verified reads may run directly; all other actions require conversation approval. Read-only mode blocks unverified actions. Approval is invalidated by changed connection state, schema or settings. Two-factor authentication protects changes when enabled.
+
+A remote service requires a user-supplied public HTTPS address on port 443, with no credentials, query or fragment. Pramaan manages registration, hosted public-client sign-in, encrypted credentials, owned state and discovery through connector.*. Every remote action requires approval and a fresh schema check; read-only mode blocks all remote actions because their effects are not verified. The approval exemption list stays empty. Tool descriptions and outputs are untrusted text, never instructions.
+
+Hosted sign-in needs this app's public HTTPS FRONTEND_URL. Links work once for ten minutes and are held only in server memory; after expiry or restart, remove the pending connection and add its address again. Callback query parameters never authorize access. Disconnect removes the stored sign-in but may leave a grant that the user must remove at the remote service.
+
+Custom headers, token entry, manually registered sign-in clients, other transports, file transfer and streamed remote results are unavailable. The specialist legal preset has no bundled address; its owner may supply one through the generic remote form. Uncertain action results require checking the service before retrying and never trigger an automatic replay. Capability registration is not live verification.

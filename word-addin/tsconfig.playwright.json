@@ -1,0 +1,118 @@
+{
+  "extends": "./tsconfig.e2e.json",
+  "compilerOptions": {
+    "paths": {
+      "@legal-assistant/contracts": [
+        "../packages/contracts/index.d.ts"
+      ],
+      "lucide-react": [
+        "./node_modules/lucide-react"
+      ],
+      "clsx": [
+        "./node_modules/clsx"
+      ],
+      "tailwind-merge": [
+        "./node_modules/tailwind-merge"
+      ],
+      "@radix-ui/react-dropdown-menu": [
+        "./node_modules/@radix-ui/react-dropdown-menu"
+      ],
+      "@legal-assistant/edit-card-ui": [
+        "../frontend/src/shared/ui/EditCardUI.tsx"
+      ],
+      "@legal-assistant/edit-cards-section-ui": [
+        "../frontend/src/shared/ui/EditCardsSectionUI.tsx"
+      ],
+      "@legal-assistant/reasoning-disclosure": [
+        "../frontend/src/shared/hooks/useReasoningDisclosure.ts"
+      ],
+      "@legal-assistant/pre-response-wrapper-ui": [
+        "../frontend/src/shared/ui/PreResponseWrapperUI.tsx"
+      ],
+      "@legal-assistant/document-event-blocks-ui": [
+        "../frontend/src/shared/ui/DocumentEventBlocksUI.tsx"
+      ],
+      "@legal-assistant/input-ui": [
+        "../frontend/src/shared/ui/InputUI.tsx"
+      ],
+      "@legal-assistant/glass-card-ui": [
+        "../frontend/src/shared/ui/GlassCardUI.tsx"
+      ],
+      "@legal-assistant/modal-ui": [
+        "../frontend/src/shared/ui/ModalUI.tsx"
+      ],
+      "@legal-assistant/header-buttons-ui": [
+        "../frontend/src/shared/ui/HeaderButtonsUI.tsx"
+      ],
+      "@legal-assistant/pill-button-ui": [
+        "../frontend/src/shared/ui/PillButtonUI.tsx"
+      ],
+      "@legal-assistant/tab-pill-button-ui": [
+        "../frontend/src/shared/ui/TabPillButtonUI.tsx"
+      ],
+      "@legal-assistant/toggle-switch-ui": [
+        "../frontend/src/shared/ui/ToggleSwitchUI.tsx"
+      ],
+      "@legal-assistant/dropdown-ui": [
+        "../frontend/src/shared/ui/dropdown.tsx"
+      ],
+      "@legal-assistant/citation-pill-ui": [
+        "../frontend/src/shared/ui/CitationPillUI.tsx"
+      ],
+      "@legal-assistant/model-toggle-ui": [
+        "../frontend/src/shared/ui/ModelToggleUI.tsx"
+      ],
+      "@legal-assistant/legal-assistant-icon-ui": [
+        "../frontend/src/shared/ui/LegalAssistantIconUI.tsx"
+      ],
+      "@legal-assistant/google-icon-ui": [
+        "../frontend/src/shared/ui/GoogleIconUI.tsx"
+      ],
+      "@legal-assistant/auth-styles-ui": [
+        "../frontend/src/shared/ui/AuthStylesUI.ts"
+      ],
+      "@legal-assistant/auth-divider-ui": [
+        "../frontend/src/shared/ui/AuthDividerUI.tsx"
+      ],
+      "@legal-assistant/workflow-slash-command-ui": [
+        "../frontend/src/shared/ui/WorkflowSlashCommandUI.tsx"
+      ],
+      "@legal-assistant/upload-session-client": [
+        "../frontend/src/shared/api/uploadSessionClient.ts"
+      ],
+      "@legal-assistant/secure-uuid": [
+        "../frontend/src/shared/lib/secureUuid.ts"
+      ],
+      "@legal-assistant/toast-store": [
+        "../frontend/src/shared/lib/toastStore.ts"
+      ],
+      "@legal-assistant/toast-ui": [
+        "../frontend/src/shared/ui/ToastUI.tsx"
+      ],
+      "@legal-assistant/user-error": [
+        "../frontend/src/shared/lib/userError.ts"
+      ],
+      "@legal-assistant/model-catalog": [
+        "../frontend/src/shared/lib/modelCatalog.ts"
+      ],
+      "@legal-assistant/message-excerpts": [
+        "../frontend/src/shared/lib/messageExcerpts.ts"
+      ],
+      "@legal-assistant/response-selection-menu-ui": [
+        "../frontend/src/shared/ui/ResponseSelectionMenuUI.tsx"
+      ],
+      "@legal-assistant/excerpt-pill-ui": [
+        "../frontend/src/shared/ui/ExcerptPillUI.tsx"
+      ],
+      "@legal-assistant/excerpt-modal-ui": [
+        "../frontend/src/shared/ui/ExcerptModalUI.tsx"
+      ],
+      "@legal-assistant/chat-history-dropdown-ui": [
+        "../frontend/src/shared/ui/ChatHistoryDropdownUI.tsx"
+      ],
+      "@legal-assistant/composer-send-button-ui": [
+        "../frontend/src/shared/ui/ComposerSendButtonUI.styles.ts"
+      ]
+    }
+  }
+}

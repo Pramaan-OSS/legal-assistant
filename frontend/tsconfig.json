@@ -1,0 +1,71 @@
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "esnext"
+    ],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "react-jsx",
+    "types": [
+      "node",
+      "react",
+      "react-dom"
+    ],
+    "typeRoots": [
+      "./node_modules/@types"
+    ],
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@legal-assistant/contracts": [
+        "../packages/contracts/index.d.ts"
+      ],
+      "@/*": [
+        "./src/*"
+      ],
+      "@legal-assistant/upload-session-client": [
+        "./src/shared/api/uploadSessionClient.ts"
+      ],
+      "@legal-assistant/secure-uuid": [
+        "./src/shared/lib/secureUuid.ts"
+      ],
+      "@legal-assistant/user-error": [
+        "./src/shared/lib/userError.ts"
+      ],
+      "@legal-assistant/toast-store": [
+        "./src/shared/lib/toastStore.ts"
+      ],
+      "@legal-assistant/toast-ui": [
+        "./src/shared/ui/ToastUI.tsx"
+      ],
+      "@legal-assistant/model-catalog": [
+        "./src/shared/lib/modelCatalog.ts"
+      ]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts",
+    "**/*.mts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

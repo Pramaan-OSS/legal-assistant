@@ -1,0 +1,10 @@
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { expect, it, vi } from 'vitest';
+import type { ApiKeyState } from '@/app/lib/legalAssistantApi';
+import { ModelToggle } from './ModelToggle';
+vi.mock('@/app/hooks/useLocalModels', () => ({ useLocalModels: () => [] }));
+vi.mock('@/app/hooks/useConfiguredModels', () => ({ useConfiguredModels: () => [] }));
+it('offers three neutral qualities and reports the selected value', async () => { const change = vi.fn(); render(<ModelToggle value="balanced" onChange={change}/>); await userEvent.click(screen.getByRole('button', {name: 'Choose quality'})); expect(screen.getByText('Fast')).toBeVisible(); expect(screen.getAllByText('Balanced').length).toBeGreaterThan(0); await userEvent.click(screen.getByText('Best')); expect(change).toHaveBeenCalledWith('best'); expect(screen.queryByRole('slider')).toBeNull(); });
+it('keeps the picker disabled while server access is loading', () => { render(<ModelToggle value="balanced" onChange={vi.fn()} apiKeysLoading/>); expect(screen.getByRole('button', {name:'Choose quality'})).toBeDisabled(); });
+it('shows owner setup when no capability access is configured', async () => { const setup=vi.fn(); render(<ModelToggle value="balanced" onChange={vi.fn()} apiKeys={{} as ApiKeyState} onNoModelsClick={setup}/>); await userEvent.click(screen.getByRole('button')); expect(setup).toHaveBeenCalledWith('api-keys'); });

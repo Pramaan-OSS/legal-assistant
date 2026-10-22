@@ -1,0 +1,2 @@
+import { SettingsHeading } from '@/app/components/settings/SettingsHeading';
+export default function FeaturesPage() { return <section><SettingsHeading>Capabilities</SettingsHeading><p>Legal research, document review and connected actions use the owner’s capability access. You do not need separate provider keys.</p><p>Choose Fast, Balanced or Best in the assistant. Replies appear progressively; interrupted replies are marked incomplete. Organization sign-in uses configured OpenID Connect connections. SAML remains unavailable.</p></section>; }

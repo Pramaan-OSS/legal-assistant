@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Connected sign-in</title>
+    <script
+      type="text/javascript"
+      src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"
+    ></script>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        align-items: center;
+        background: #f9fafb;
+        color: #111827;
+        display: flex;
+        font-family: Inter, system-ui, sans-serif;
+        justify-content: center;
+        padding: 24px;
+        text-align: left;
+      }
+
+      main {
+        max-width: 360px;
+        width: 100%;
+      }
+
+      p {
+        color: #6b7280;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Sign in</h1>
+      <p id="status">Opening sign-in…</p>
+      <form id="managed-email" hidden>
+        <p><label>Email <input name="email" type="email" autocomplete="username" required /></label></p>
+        <p><label>Password <input name="password" type="password" autocomplete="current-password" required /></label></p>
+        <button type="submit">Sign in with email</button>
+      </form>
+      <button id="managed-social" type="button" hidden>Continue with connected sign-in</button>
+    </main>
+  </body>
+</html>

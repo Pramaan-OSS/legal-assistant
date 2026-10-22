@@ -1,0 +1,17 @@
+import express from 'express';
+import request from 'supertest';
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+const mocks=vi.hoisted(()=>({consume:vi.fn(),redeem:vi.fn(),ticket:vi.fn(),verifyOtp:vi.fn()}));
+vi.mock('../../../lib/managedSignIn',()=>({consumeManagedFlow:mocks.consume,redeemManagedToken:mocks.redeem,startManagedFlow:vi.fn()}));
+vi.mock('../../../lib/supabase',()=>({createServerSupabase:()=>({})}));
+vi.mock('../../../lib/authSession',()=>({createRequestSupabase:()=>({auth:{verifyOtp:mocks.verifyOtp}}),clearRequestAuthCookies:vi.fn(),publicAuthUser:(user:unknown)=>user}));
+vi.mock('../../../lib/authHandoff',()=>({issueAuthHandoff:mocks.ticket,consumeAuthHandoff:vi.fn()}));
+import {authRouter} from '../auth.routes';
+const app=express();app.use(express.json());app.use('/auth',authRouter);
+const origin='https://word.example.test';const input={state:'started-state',token:'signed-token',handoffRequestId:'request-id-123456'};
+beforeEach(()=>{vi.stubEnv('WORD_ADDIN_URL',origin);vi.stubEnv('FRONTEND_URL','https://app.example.test');vi.clearAllMocks();mocks.redeem.mockResolvedValue('private-hash');mocks.verifyOtp.mockResolvedValue({data:{user:{id:'local-user'},session:{access_token:'private-access',refresh_token:'private-refresh'}},error:null});mocks.ticket.mockResolvedValue('a'.repeat(43));});
+afterEach(()=>vi.unstubAllEnvs());
+it('opens the existing one-use Word return from a verified managed session without exposing tokens',async()=>{const result=await request(app).post('/auth/managed/redeem').set('Origin',origin).send(input);expect(result.status).toBe(200);expect(result.body).toEqual({handoffTicket:'a'.repeat(43)});expect(mocks.consume).toHaveBeenCalledWith(input.state,'');expect(mocks.redeem).toHaveBeenCalledWith({},input.token,origin);expect(mocks.ticket).toHaveBeenCalledWith(expect.objectContaining({userId:'local-user',origin,requestId:input.handoffRequestId}));expect(JSON.stringify(result.body)).not.toContain('private-');});
+it('refuses a return for an unregistered document host before consuming the sign-in',async()=>{const result=await request(app).post('/auth/managed/redeem').set('Origin','https://app.example.test').send(input);expect(result.status).toBe(403);expect(mocks.consume).not.toHaveBeenCalled();expect(mocks.ticket).not.toHaveBeenCalled();});
+it('refuses an invalid return identifier before verifying the token',async()=>{const result=await request(app).post('/auth/managed/redeem').set('Origin',origin).send({...input,handoffRequestId:'bad'});expect(result.status).toBe(403);expect(mocks.redeem).not.toHaveBeenCalled();});
+it('does not issue a return when verification refuses the token or the flow was already consumed',async()=>{mocks.consume.mockImplementationOnce(()=>{throw new Error('used');});const result=await request(app).post('/auth/managed/redeem').set('Origin',origin).send(input);expect(result.status).toBe(401);expect(mocks.ticket).not.toHaveBeenCalled();});

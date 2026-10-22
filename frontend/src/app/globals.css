@@ -1,0 +1,384 @@
+@import "tailwindcss";
+@import "../shared/ui/DesignTokensUI.css";
+@import "./tokens.css";
+@import "../shared/ui/ThemeTokensUI.css";
+@import "../shared/ui/LiquidGlassUI.css";
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; width: 100%; }
+html { background: var(--bg); color: var(--fg); }
+body { font-family: var(--sans); font-size: 14px; line-height: 1.5; letter-spacing: 0; background: var(--bg); color: var(--fg); overflow-x: clip; }
+body::before { content: ''; position: fixed; inset: 0; z-index: -1; background: radial-gradient(900px 520px at 85% -10%, var(--blob-dark), transparent 65%), radial-gradient(700px 500px at -10% 110%, var(--blob-dark), transparent 65%), radial-gradient(600px 400px at 35% 40%, var(--blob-light), transparent 70%); }
+h1, h2, h3, .font-serif { font-family: var(--serif); font-weight: 400; letter-spacing: -.02em; text-wrap: balance; font-variation-settings: 'opsz' 48, 'SOFT' 30; }
+h1 { font-size: 28px; line-height: 1.2; } h2 { font-size: 20px; line-height: 1.2; } h3 { font-size: 17px; line-height: 1.2; }
+small, .meta, .storage-size-note, .reason { font-size: 12px; line-height: 1.45; color: var(--fg-3); }
+code, pre, .font-mono { font-family: var(--mono); font-size: 12px; }
+button, input, textarea, select { font: inherit; letter-spacing: 0; }
+button { cursor: pointer; } button:disabled { cursor: not-allowed; }
+input:not([type='checkbox']):not([type='radio']):not([type='file']), select { background: var(--glass-strong); border: 1px solid var(--line); border-radius: var(--r-ctl); color: var(--fg); min-height: 38px; }
+textarea { background: var(--glass-strong); color: var(--fg); border-radius: var(--r-ctl); }
+::placeholder { color: var(--fg-3); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 6px; }
+input:focus-visible, textarea:focus-visible, select:focus-visible { border-color: var(--fg); }
+svg.lucide { stroke-width: 1.5; }
+.pill, .connected-apps button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px; border-radius: var(--r-pill); background: var(--btn-glass); border: 1px solid var(--btn-edge); box-shadow: var(--btn-shadow); color: var(--fg); font-size: 13px; font-weight: 500; backdrop-filter: blur(12px); transition: background 120ms; }
+.pill:hover, .connected-apps button:hover { background: var(--btn-glass-hover); }
+.pill-ink { background: var(--inverse); color: var(--on-inverse); border-color: var(--ink-edge); }
+.pill-ink:hover { background: var(--inverse-solid); }
+[data-thread]:not(:disabled):not([aria-disabled='true']) { background: var(--thread) !important; color: var(--on-thread) !important; border-color: var(--thread-edge) !important; box-shadow: 0 1px 0 var(--thread-edge) inset, 0 4px 14px var(--thread-glow) !important; }
+[data-thread]:hover { background: var(--thread-solid) !important; }
+button:disabled, [aria-disabled='true'] { background: transparent !important; border-style: dashed; box-shadow: none !important; opacity: .55; }
+.wordmark { display: inline-flex; align-items: center; gap: 8px; font-family: var(--serif); font-size: 21px; font-weight: 400; white-space: nowrap; }
+.wordmark i { width: 8px; height: 8px; border-radius: 50%; background: var(--fg); }
+.app-frame { height: 100dvh; display: grid; grid-template-rows: 56px minmax(0,1fr); padding: 12px; gap: 12px; overflow: hidden; }
+.app-top { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 20px; padding: 0 24px; border-radius: var(--r-island); background: var(--glass); border: 1px solid var(--glass-edge); box-shadow: var(--glass-shadow); backdrop-filter: blur(var(--blur)); }
+.app-content { min-height: 0; display: flex; gap: 12px; }
+.app-content > main { flex: 1; min-width: 0; min-height: 0; height: 100%; border-radius: var(--r-island); background: var(--glass); border: 1px solid var(--glass-edge); box-shadow: var(--glass-shadow); overflow: hidden; }
+.app-content > main > :first-child { min-height: 0; max-width: 100%; }
+.app-content > main > section { padding: 24px 28px 40px; height: 100%; overflow-y: auto; }
+.crumb { color: var(--fg-3); font-size: 13px; }
+.connected-apps .connection-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin-top: 20px; }
+.connection-card { border-radius: var(--r-card); padding: 20px; border: 1px solid var(--card-edge); background: linear-gradient(180deg,var(--card-top),var(--card-bottom)); box-shadow: var(--card-shadow); display: grid; gap: 12px; align-content: start; }
+.connection-card label { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+.connection-card ul { display: grid; gap: 8px; padding: 0; list-style: none; }
+.auth-confirm { max-width: 480px; margin: 12vh auto; padding: 28px; background: var(--glass); border-radius: var(--r-island); border: 1px solid var(--glass-edge); }
+.table-surface { background: transparent; --table-cell-background: var(--glass-strong); }
+.table-sticky-cell, .table-sticky-header { background: var(--table-cell-background); }
+[class*='text-gray-9'], [class*='text-gray-8'], [class*='text-black'] { color: var(--fg); }
+[class*='text-gray-6'], [class*='text-gray-7'] { color: var(--fg-2); }
+[class*='text-gray-4'], [class*='text-gray-5'] { color: var(--fg-3); }
+[class*='bg-white'], [class*='bg-gray-50'] { background-color: var(--glass-strong); }
+[class*='bg-blue-'], [class*='bg-gray-100'] { background-color: var(--surface-sunk); }
+[class*='text-blue-'] { color: var(--fg); }
+[class*='border-gray-'] { border-color: var(--line); }
+[class*='shadow-'] { box-shadow: var(--card-shadow); }
+.user-message, [data-role='user'] { background: var(--inverse); color: var(--on-inverse); }
+.storage-size-note { margin: 8px 0; }
+@media (max-width:900px) { .app-frame { padding: 8px; gap: 8px; } .app-top { padding: 0 12px; gap: 12px; } .crumb { display: none; } .connected-apps .connection-grid { grid-template-columns: 1fr; } .app-content > main { width: 100%; } }
+@media (prefers-reduced-motion:reduce) { *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
+
+.auth-ground { background: transparent; }
+
+.workspace-island { background: var(--glass); border: 1px solid var(--glass-edge); border-radius: var(--r-island); box-shadow: var(--glass-shadow); backdrop-filter: blur(var(--blur)); overflow: hidden; }
+
+/* ─── Reusable Tiptap WYSIWYG Markdown editor ───────────────────── */
+.markdown-editor-content {
+    min-height: 100%;
+    padding: 1rem 1.25rem;
+    outline: none;
+    font-size: 0.875rem;
+    color: var(--editor-text);
+    line-height: 1.65;
+    font-family: var(--font-serif);
+}
+
+.markdown-editor-content h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--editor-heading);
+    margin-top: 1.25rem;
+    margin-bottom: 0.375rem;
+    line-height: 1.25;
+}
+
+.markdown-editor-content h2 {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    color: var(--editor-heading);
+    margin-top: 0.875rem;
+    margin-bottom: 0.25rem;
+    line-height: 1.3;
+}
+
+.markdown-editor-content h3 {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--editor-heading);
+    margin-top: 0.625rem;
+    margin-bottom: 0.125rem;
+    line-height: 1.35;
+}
+
+.markdown-editor-content h1:first-child,
+.markdown-editor-content h2:first-child,
+.markdown-editor-content h3:first-child {
+    margin-top: 0;
+}
+
+.markdown-editor-content p {
+    margin-bottom: 0.5rem;
+}
+
+.markdown-editor-content p:last-child {
+    margin-bottom: 0;
+}
+
+.markdown-editor-content ul {
+    list-style-type: disc;
+    padding-left: 1.375rem;
+    margin-bottom: 0.5rem;
+}
+
+.markdown-editor-content ol {
+    list-style-type: decimal;
+    padding-left: 1.375rem;
+    margin-bottom: 0.5rem;
+}
+
+.markdown-editor-content li {
+    margin-bottom: 0.125rem;
+}
+
+.markdown-editor-content li > p {
+    margin-bottom: 0;
+}
+
+.markdown-editor-content strong {
+    font-weight: 600;
+    color: var(--editor-strong-text);
+}
+
+.markdown-editor-content em {
+    font-style: italic;
+}
+
+.markdown-editor-content .tableWrapper {
+    margin: 0.75rem 0;
+    overflow-x: auto;
+    border: 1px solid var(--editor-border);
+    border-radius: 0.375rem;
+}
+
+.markdown-editor-content .tableWrapper:first-child {
+    margin-top: 0;
+}
+
+.markdown-editor-content .tableWrapper:last-child {
+    margin-bottom: 0;
+}
+
+.markdown-editor-content table {
+    width: 100%;
+    min-width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    text-align: left;
+    font-size: 0.75rem;
+}
+
+.markdown-editor-content thead {
+    background: var(--editor-table-header);
+}
+
+.markdown-editor-content th,
+.markdown-editor-content td {
+    border-right: 1px solid var(--editor-grid-line);
+    border-bottom: 1px solid var(--editor-grid-line);
+    padding: 0.5rem 0.75rem;
+    vertical-align: top;
+    word-break: break-word;
+}
+
+.markdown-editor-content th:last-child,
+.markdown-editor-content td:last-child {
+    border-right: 0;
+}
+
+.markdown-editor-content tr:last-child td {
+    border-bottom: 0;
+}
+
+.markdown-editor-content th {
+    color: var(--editor-text);
+    font-weight: 600;
+}
+
+.markdown-editor-content td {
+    color: var(--editor-muted-text);
+}
+
+.markdown-editor-content th p,
+.markdown-editor-content td p {
+    min-height: 1.25rem;
+    margin-bottom: 0;
+}
+
+/* ChatBox Animation Styles */
+
+/* PDF text layer */
+.pdf-text-layer {
+    --text-scale-factor: calc(
+        var(--total-scale-factor) * var(--min-font-size, 1)
+    );
+    --min-font-size-inv: calc(1 / var(--min-font-size, 1));
+    overflow: hidden;
+    opacity: 1;
+    line-height: 1;
+    /* The layer sits over the rendered canvas and holds the page's real text,
+       so it has to receive pointer events for the user to select and copy. */
+    caret-color: CanvasText;
+}
+
+.pdf-text-layer .markedContent {
+    display: contents;
+}
+
+.pdf-text-layer .pdf-text-item {
+    --font-height: 0;
+    --scale-x: 1;
+    --rotate: 0deg;
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    user-select: text;
+    transform-origin: 0% 0%;
+    z-index: 1;
+    font-size: calc(var(--text-scale-factor) * var(--font-height));
+    transform: rotate(var(--rotate)) scaleX(var(--scale-x))
+        scale(var(--min-font-size-inv));
+}
+
+.pdf-text-layer .pdf-text-highlight {
+    background-color: var(--pdf-highlight-background);
+    border-radius: 2px;
+    position: static;
+}
+
+/* The glyphs in this layer are transparent stand-ins for the ones painted on
+   the canvas below. Selection has to stay translucent so the real text still
+   reads through it, and the text itself has to stay transparent: the browser's
+   default selection foreground would paint these invisible glyphs opaque and
+   double them on top of the page. */
+.pdf-text-layer ::selection {
+    background-color: var(--pdf-selection-background);
+    color: transparent;
+}
+
+/* PDF.js ends each text line with a <br>. The stock viewer stylesheet takes
+   those out of flow and hides their selection; without that they sat at the
+   layer's left edge and a drag selection painted a bar there on every line. */
+.pdf-text-layer br {
+    position: absolute;
+    color: transparent;
+    white-space: pre;
+    cursor: text;
+}
+
+.pdf-text-layer br::selection {
+    background: transparent;
+}
+
+.docx-view-container span.docx-text-highlight,
+.docx-view-container .docx-text-highlight {
+    background-color: var(--docx-highlight-background) !important;
+    border-radius: 2px;
+    padding: 0 1px;
+    color: inherit !important;
+}
+
+.case-document-content span.case-quote-highlight,
+.case-document-content .case-quote-highlight {
+    background-color: var(--case-highlight-background) !important;
+    border-radius: 2px;
+    padding: 0 1px;
+    color: inherit !important;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+
+/* Optimistic Accept/Reject: instantly hide rejected side / de-style kept side.
+   These are ephemeral DOM mutations; the real re-render replaces the markup. */
+.docx-view-container .docx-edit-hidden {
+    display: none !important;
+}
+
+.docx-view-container .docx-edit-kept {
+    color: inherit !important;
+    background-color: transparent !important;
+    text-decoration: none !important;
+    border-bottom: none !important;
+}
+
+.uploading-ellipsis {
+    display: inline-grid;
+    width: 1.5em;
+}
+
+.uploading-ellipsis-one,
+.uploading-ellipsis-two,
+.uploading-ellipsis-three {
+    grid-area: 1 / 1;
+}
+
+.uploading-ellipsis-one {
+    animation: uploadingEllipsisOne 1.2s steps(1, end) infinite;
+}
+
+.uploading-ellipsis-two {
+    animation: uploadingEllipsisTwo 1.2s steps(1, end) infinite;
+}
+
+.uploading-ellipsis-three {
+    animation: uploadingEllipsisThree 1.2s steps(1, end) infinite;
+}
+
+@keyframes uploadingEllipsisOne {
+    0%, 32% {
+        opacity: 1;
+    }
+    33%, 100% {
+        opacity: 0;
+    }
+}
+
+@keyframes uploadingEllipsisTwo {
+    0%, 32%, 66%, 100% {
+        opacity: 0;
+    }
+    33%, 65% {
+        opacity: 1;
+    }
+}
+
+@keyframes uploadingEllipsisThree {
+    0%, 65% {
+        opacity: 0;
+    }
+    66%, 100% {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .uploading-ellipsis-one,
+    .uploading-ellipsis-two,
+    .uploading-ellipsis-three {
+        animation: none;
+    }
+
+    .uploading-ellipsis-one,
+    .uploading-ellipsis-two {
+        opacity: 0;
+    }
+}
+
+/* Text fields always match :focus-visible, even after a click. Keep the
+   Tailwind focus ring for keyboard navigation only; useInputModality sets the
+   attribute. Clears only the ring, not the field's own shadows. Unlayered on
+   purpose: EigenPal's unlayered `.docx-editor .focus-visible\:ring-2` rules
+   would otherwise win inside the editor chrome (comment column, composer). */
+:root[data-input-modality="pointer"] .keyboard-focus-ring:focus-visible {
+    --tw-ring-shadow: 0 0 #0000;
+    --tw-ring-offset-shadow: 0 0 #0000;
+}
+
+.app-frame { grid-template-columns: minmax(0, 1fr); }
+.app-content, .app-top { min-width: 0; max-width: 100%; }
+.app-frame img[src^='/icons/'] { filter: grayscale(1); }
+.sidebar-recents { display: flex; flex-direction: column; min-height: 0; max-height: 55%; }
+.sidebar-recents > div { flex: 1; min-height: 0; }
+
+.remote-connection-form { display: grid; gap: 12px; margin: 16px 0; max-width: 560px; }
+.remote-connection-form label { display: grid; gap: 8px; font-size: 13px; }
+.remote-connection-form input, .remote-connection-form select { width: 100%; min-width: 0; }
+.remote-connection-form button { justify-self: start; }

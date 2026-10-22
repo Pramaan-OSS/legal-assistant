@@ -1,0 +1,152 @@
+[
+  {
+    "app": "googledrive",
+    "action": "GOOGLEDRIVE_FIND_FILE",
+    "description": "Find files and recent files",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "app": "googledrive",
+    "action": "GOOGLEDRIVE_DOWNLOAD_FILE",
+    "description": "Download a file",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "fileId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "fileId"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "app": "gmail",
+    "action": "GMAIL_FETCH_EMAILS",
+    "description": "Fetch emails",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "app": "gmail",
+    "action": "GMAIL_LIST_LABELS",
+    "description": "List labels",
+    "inputSchema": {
+      "type": "object",
+      "properties": {},
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "app": "gmail",
+    "action": "GMAIL_MOVE_TO_TRASH",
+    "description": "Move an email to trash",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "message_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "message_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "app": "googlecalendar",
+    "action": "FAKE_GOOGLECALENDAR_ACTION",
+    "description": "List calendar events",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "app": "slack",
+    "action": "FAKE_SLACK_ACTION",
+    "description": "Search messages",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "app": "notion",
+    "action": "FAKE_NOTION_ACTION",
+    "description": "Search pages",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "app": "airtable",
+    "action": "FAKE_AIRTABLE_ACTION",
+    "description": "List records",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "app": "linear",
+    "action": "FAKE_LINEAR_ACTION",
+    "description": "Search issues",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  }
+]

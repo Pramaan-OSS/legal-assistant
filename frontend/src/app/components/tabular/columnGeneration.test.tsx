@@ -1,0 +1,23 @@
+import { afterEach, expect, it, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { AddColumnModal } from './AddColumnModal';
+import { WFEditColumnModal } from '../workflows/WFEditColumnModal';
+const generate = vi.hoisted(() => vi.fn());
+vi.mock('@/app/lib/legalAssistantApi', async original => ({ ...await original<typeof import('@/app/lib/legalAssistantApi')>(), generateTabularColumnPrompt: generate }));
+afterEach(() => { cleanup(); vi.resetAllMocks(); });
+it.each(['add', 'edit'])('keeps the %s column form usable after generation fails and permits an explicit retry', async kind => {
+ const user = userEvent.setup();
+ generate.mockRejectedValueOnce(new Error('private upstream diagnostic')).mockResolvedValueOnce({ prompt: 'Extract the notice period.' });
+ if (kind === 'add') render(<AddColumnModal open existingCount={0} onClose={vi.fn()} onAdd={vi.fn()} />);
+ else render(<WFEditColumnModal column={{ index: 0, name: 'Notice days', prompt: 'Original prompt', format: 'text' }} onClose={vi.fn()} onSave={vi.fn()} onDelete={vi.fn()} />);
+ if (kind === 'add') await user.type(screen.getByLabelText('Column title'), 'Notice days');
+ await user.click(screen.getByRole('button', { name: 'Auto-Generate Prompt' }));
+ expect(await screen.findByRole('alert')).toHaveTextContent('Try again or write it below');
+ expect(screen.queryByText('private upstream diagnostic')).not.toBeInTheDocument();
+ expect(generate).toHaveBeenCalledTimes(1);
+ await user.click(screen.getByRole('button', { name: 'Auto-Generate Prompt' }));
+ expect(await screen.findByDisplayValue('Extract the notice period.')).toBeInTheDocument();
+ expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+ expect(generate).toHaveBeenCalledTimes(2);
+});
