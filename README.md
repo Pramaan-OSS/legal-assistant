@@ -1,3 +1,5 @@
+[![CI](https://github.com/Pramaan-OSS/legal-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Pramaan-OSS/legal-assistant/actions/workflows/ci.yml)
+
 # Legal Assistant
 
 A private legal workspace for documents, assistant conversations, verified citations and connected actions. Outside data and actions use one server-side Pramaan client. Sign-in and the database are provided through Pramaan in test mode; until the managed database is available, the bundled local database starts automatically.

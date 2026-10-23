@@ -7720,5 +7720,6 @@ insert into public.schema_migrations (filename) values
   ('20261009_02_user_api_key_enabled.sql'),
   ('20261009_03_schema_migrations.sql'),
   ('20261013_01_neutral_connector_columns.sql'),
-  ('20261013_02_enterprise_sign_in.sql')
+  ('20261013_02_enterprise_sign_in.sql'),
+  ('20261023_01_template_schema_alignment.sql')
 on conflict (filename) do nothing;

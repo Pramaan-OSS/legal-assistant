@@ -151,7 +151,7 @@ it('retains failed cleanup and finishes it before starting another upload', asyn
 });
 
 it('closes a refused private download body without leaking its signed location', async () => {
- setPlatformFileTransportForTests(); vi.stubEnv('PRAMAAN_BASE_URL', 'http://localhost:9999');
+ setPlatformFileTransportForTests(); vi.stubEnv('PRAMAAN_FAKE', '0'); vi.stubEnv('PRAMAAN_BASE_URL', 'http://localhost:9999');
  call.mockResolvedValue({ downloadUrl: 'http://localhost:9999/private?signature=hidden' });
  const cancel = vi.fn(); const fetch = vi.fn(async () => new Response(new ReadableStream({ cancel }), { status: 403 }));
  vi.doMock('undici', () => ({ fetch, Agent: class {} }));

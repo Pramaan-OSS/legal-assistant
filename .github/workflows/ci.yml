@@ -1,32 +1,116 @@
-name: Checks
-on: [push, pull_request, workflow_dispatch]
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  PRAMAAN_API_KEY: ""
+  PRAMAAN_FAKE: "1"
+  PRAMAAN_BASE_URL: http://127.0.0.1:1
+  DO_NOT_TRACK: "1"
+  NEXT_TELEMETRY_DISABLED: "1"
+  ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+  REACT_APP_WEB_APP_URL: https://app.example.test
+  WORD_ADDIN_PUBLIC_URL: https://addin.example.test
 jobs:
-  backend:
+  checks:
+    name: ${{ matrix.check }}
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [lint, typecheck, test-ui, build]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+            word-addin/package-lock.json
+            desktop/package-lock.json
+      - run: npm ci --prefix backend
+      - run: npm ci --prefix frontend
+      - run: npm ci --prefix word-addin
+      - run: npm ci --prefix desktop
+      - if: matrix.check == 'lint'
+        run: npm run lint --prefix frontend
+      - if: matrix.check == 'typecheck'
+        run: |
+          ./backend/node_modules/.bin/tsc --noEmit -p backend/tsconfig.json
+          npm run typecheck:test --prefix backend
+          npm run typecheck:contracts --prefix backend
+          (cd frontend && npx next typegen)
+          npm run typecheck --prefix frontend
+          npm run typecheck --prefix word-addin
+      - if: matrix.check == 'test-ui'
+        run: |
+          npm test --prefix frontend
+          npm run test:server --prefix word-addin
+          LEGAL_ASSISTANT_LOCAL_FETCH_ONLY=postgres npm run local:fetch --prefix desktop
+          npm test --prefix desktop
+          node --test scripts/*.test.mjs
+      - if: matrix.check == 'build'
+        run: |
+          npm run build --prefix backend
+          npm run build --prefix frontend
+          npm run build --prefix word-addin
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      auth:
+        image: supabase/gotrue:v2.189.0
+        env:
+          GOTRUE_API_HOST: 0.0.0.0
+          GOTRUE_API_PORT: "9999"
+          API_EXTERNAL_URL: http://127.0.0.1:8080
+          GOTRUE_DB_DRIVER: postgres
+          GOTRUE_DB_DATABASE_URL: postgres://postgres:postgres@postgres:5432/postgres?search_path=auth
+          GOTRUE_SITE_URL: http://localhost:3000
+          GOTRUE_JWT_SECRET: ci-only-jwt-secret-at-least-32-characters-long
+          GOTRUE_JWT_AUD: authenticated
+          GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+          GOTRUE_JWT_ADMIN_ROLES: service_role
+          GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+          GOTRUE_MAILER_AUTOCONFIRM: "true"
+        ports: [9999:9999]
+        options: --restart on-failure
+      rest:
+        image: postgrest/postgrest:v14.12
+        env:
+          PGRST_DB_URI: postgres://postgres:postgres@postgres:5432/postgres
+          PGRST_DB_SCHEMAS: public
+          PGRST_DB_ANON_ROLE: anon
+          PGRST_JWT_SECRET: ci-only-jwt-secret-at-least-32-characters-long
+        ports: [3001:3000]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: backend/package-lock.json
       - run: npm ci --prefix backend
-      - run: ./backend/node_modules/.bin/tsc --noEmit -p backend/tsconfig.json
-      - run: npm run typecheck:test --prefix backend
-      - run: npm run typecheck:contracts --prefix backend
-      - run: npm test --prefix backend
-  frontend:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-      - run: npm ci --prefix frontend
-      - run: npm run lint --prefix frontend
-      - run: npm run typecheck --prefix frontend
-      - run: npm test --prefix frontend
+      - run: node scripts/ci-test.mjs

@@ -30,10 +30,14 @@ mkdir -p "$DEST"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-echo "==> Postgres $PG_NPM_VERSION (@embedded-postgres/darwin-arm64)"
+PG_PACKAGE="@embedded-postgres/darwin-arm64"
+if [ "$ONLY" = "postgres" ]; then
+  PG_PACKAGE="$(node -p '"@embedded-postgres/" + process.platform + "-" + process.arch')"
+fi
+echo "==> Postgres $PG_NPM_VERSION ($PG_PACKAGE)"
 if [ ! -x "$DEST/pg/bin/postgres" ]; then
-  npm pack "@embedded-postgres/darwin-arm64@$PG_NPM_VERSION" --pack-destination "$WORK" >/dev/null
-  tar -xzf "$WORK"/embedded-postgres-darwin-arm64-*.tgz -C "$WORK"
+  npm pack "$PG_PACKAGE@$PG_NPM_VERSION" --pack-destination "$WORK" >/dev/null
+  tar -xzf "$WORK"/embedded-postgres-*.tgz -C "$WORK"
   rm -rf "$DEST/pg"
   mv "$WORK/package/native" "$DEST/pg"
   chmod +x "$DEST"/pg/bin/*
@@ -43,7 +47,10 @@ if [ ! -x "$DEST/pg/bin/postgres" ]; then
   python3 - "$DEST/pg" <<'PY'
 import json, os, sys
 root = sys.argv[1]
-with open(os.path.join(root, "pg-symlinks.json")) as f:
+manifest = os.path.join(root, "pg-symlinks.json")
+if not os.path.exists(manifest):
+    sys.exit(0)
+with open(manifest) as f:
     for link in json.load(f):
         src = link["source"].removeprefix("native/")
         dst = os.path.join(root, link["target"].removeprefix("native/"))

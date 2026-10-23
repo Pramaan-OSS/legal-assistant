@@ -415,7 +415,7 @@ maybeDescribe("Supabase stack — auth contract + RLS deny-all firewall", () => 
         ];
         for (const client of clients) {
           const read = await client.from(table).select("*").eq("id", rowId);
-          expect(read.error?.code).toBe("42501");
+          expect(read.error?.code, JSON.stringify(read.error)).toBe("42501");
           expect(read.data).toBeNull();
           const insert = await client
             .from(table)

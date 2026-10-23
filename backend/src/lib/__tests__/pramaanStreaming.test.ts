@@ -96,6 +96,7 @@ it('does not repeat completed actions when the following answer stream drops', a
  expect(runTools).toHaveBeenCalledOnce(); expect(stream).toHaveBeenCalledTimes(2); expect(call).not.toHaveBeenCalled();
 });
 it('passes Stop to the single SDK request and closes its reader', async () => {
+ vi.stubEnv('PRAMAAN_FAKE', '0'); // This test replaces fetch to exercise SDK transport.
  vi.resetModules();
  const controller = new AbortController(); const cancel = vi.fn();
  const fetch = vi.fn(async (_url: string, init: RequestInit) => {

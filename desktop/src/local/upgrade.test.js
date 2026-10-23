@@ -28,34 +28,13 @@ const { Client } = require("pg");
 const schema = require("./schema");
 const { TRANSACTION_BLOCK_ERROR } = require("./sql");
 
-// Same pin as schema-drift.yml, for the same reason: a commit where
-// schema.sql and the migrations were in agreement. Advance both together.
-const BASELINE_REF = "9a1277ba99cbd7dfae77e5b882e5cef8521fca2f";
-
+// Committed fixture from template commit 110b6b8, so release archives need no git history.
 const REPO = path.resolve(__dirname, "..", "..", "..");
 const BACKEND = path.join(REPO, "backend");
 const PG_BIN = path.join(__dirname, "..", "..", "local-stack", "bin", "pg", "bin");
 const FINGERPRINT_SQL = path.join(BACKEND, "scripts", "schema-fingerprint.sql");
-
-const pgAvailable = fs.existsSync(path.join(PG_BIN, "postgres"));
-const gitHasBaseline =
-  spawnSync("git", ["-C", REPO, "cat-file", "-e", `${BASELINE_REF}^{commit}`]).status === 0;
-const required = process.env.LEGAL_ASSISTANT_REQUIRE_LOCAL_STACK === "1";
-if (required) {
-  assert.ok(pgAvailable, `LEGAL_ASSISTANT_REQUIRE_LOCAL_STACK=1 but no postgres at ${PG_BIN} — run local:fetch`);
-  assert.ok(gitHasBaseline, `LEGAL_ASSISTANT_REQUIRE_LOCAL_STACK=1 but git cannot see ${BASELINE_REF} — shallow clone?`);
-}
-const skip = !pgAvailable
-  ? `bundled postgres not fetched (${PG_BIN})`
-  : !gitHasBaseline
-    ? `baseline ${BASELINE_REF} not in git history`
-    : false;
-
-const git = (...args) => {
-  const res = spawnSync("git", ["-C", REPO, ...args], { encoding: "utf8", maxBuffer: 64 << 20 });
-  if (res.status !== 0) throw new Error(`git ${args.join(" ")}: ${res.stderr}`);
-  return res.stdout;
-};
+const FIXTURES = path.join(__dirname, "..", "..", "test-fixtures");
+assert.ok(fs.existsSync(path.join(PG_BIN, "postgres")), "Fetch CI Postgres with LEGAL_ASSISTANT_LOCAL_FETCH_ONLY=postgres npm run local:fetch --prefix desktop");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function freePort() {
@@ -151,10 +130,8 @@ async function fingerprint(withPg) {
     .join("\n");
 }
 
-const baselineSchema = () => git("show", `${BASELINE_REF}:backend/schema.sql`);
-const baselineMigrations = () =>
-  git("ls-tree", "--name-only", BASELINE_REF, "backend/migrations/")
-    .split("\n").filter((f) => f.endsWith(".sql")).map((f) => path.basename(f)).sort();
+const baselineSchema = () => fs.readFileSync(path.join(FIXTURES, "schema-baseline.sql"), "utf8");
+const baselineMigrations = () => JSON.parse(fs.readFileSync(path.join(FIXTURES, "baseline-migrations.json"), "utf8"));
 
 // What an installation created at BASELINE_REF looks like on disk: that
 // commit's schema.sql, and a ledger saying every migration shipped at that
@@ -173,7 +150,7 @@ async function buildBaselineInstallation(withPg) {
   `, "baseline ledger");
 }
 
-test("an installation from the schema baseline upgrades through the app's runner to today's schema", { skip }, async () => {
+test("an installation from the schema baseline upgrades through the app's runner to today's schema", async () => {
   const cluster = await startCluster();
   try {
     const { withPg } = cluster;
