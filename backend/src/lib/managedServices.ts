@@ -1,13 +1,14 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createHmac, randomUUID } from 'node:crypto';
-import { callCapability, CapabilityCallError } from './pramaan';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
+import { callCapability, CapabilityCallError, configureManagedRecovery } from './pramaan';
 import { UserFacingError } from './userFacingError';
 export type ManagedState = {
   databaseAttempt?: string;
   signInAttempt?: string;
   domainAttempt?: { origin: string; key: string };
   authAvailable?: boolean;
+  recovery?: { fingerprint: string; enabled: boolean };
   database?: { connectionString: string; directConnectionString: string };
   auth?: { authUrl: string; jwksUrl: string; origin?: string; domains?: string[] };
 };
@@ -102,6 +103,23 @@ export async function prepareManagedSignIn(directory: string, log: (message:stri
         state.auth.origin=origin;state.auth.domains=domains;delete state.domainAttempt;saveManagedState(directory,state);
       }
     } else log('Using the managed sign-in development address; no public domain update is needed.');
+    const senderEmail=process.env.MANAGED_RECOVERY_SENDER_EMAIL?.trim();
+    if(senderEmail) {
+      const input={host:process.env.MANAGED_RECOVERY_SMTP_HOST??'',port:Number(process.env.MANAGED_RECOVERY_SMTP_PORT??587),username:process.env.MANAGED_RECOVERY_SMTP_USERNAME??'',password:process.env.MANAGED_RECOVERY_SMTP_PASSWORD??'',senderEmail,senderName:'Legal Assistant'};
+      if(!input.host||!input.username||!input.password||!Number.isInteger(input.port)||input.port<1||input.port>65535)throw new UserFacingError('Complete the private recovery sender settings before starting.');
+      const fingerprint=createHash('sha256').update(JSON.stringify(input)).digest('hex');
+      if(state.recovery?.fingerprint!==fingerprint||!state.recovery.enabled) {
+        // Persist disabled first: a refused or uncertain update cannot expose working controls.
+        state.recovery={fingerprint,enabled:false};saveManagedState(directory,state);
+        try {
+          const result=await configureManagedRecovery(input,'managed-recovery-'+fingerprint);
+          state.recovery={fingerprint,enabled:result.recovery.enabled};saveManagedState(directory,state);
+        } catch(error) {
+          if(!(error instanceof CapabilityCallError)||!['not_found','upstream_unavailable'].includes(error.code))throw error;
+          log('Managed password recovery is not available yet; managed sign-in remains available.');
+        }
+      }
+    } else if(state.recovery) {state.recovery.enabled=false;saveManagedState(directory,state);}
     state.authAvailable=true;saveManagedState(directory,state);
     return {managed:true};
   } catch(error) {
@@ -119,7 +137,7 @@ export function managedSignInConfiguration() {
 
 export function writePublicSignInConfiguration(directory: string) {
   const state=readManagedState(directory);
-  const settings=process.env.LOCAL_SIGN_IN==='1'||!process.env.PRAMAAN_API_KEY?.trim()||!state.authAvailable ? null : {authUrl:state.auth?.authUrl};
+  const settings=process.env.LOCAL_SIGN_IN==='1'||!process.env.PRAMAAN_API_KEY?.trim()||!state.authAvailable ? null : {authUrl:state.auth?.authUrl,...(state.recovery?.enabled?{recoveryEnabled:true}:{})};
   const path=resolve(directory,'public-auth.json');
   writeFileSync(path,JSON.stringify(settings),{mode:0o600});chmodSync(path,0o600);
 }

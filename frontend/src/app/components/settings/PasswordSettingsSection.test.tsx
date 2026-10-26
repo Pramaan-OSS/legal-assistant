@@ -174,5 +174,5 @@ describe("PasswordSettingsSection", () => {
 
 it('does not offer local password mutations as managed password changes',()=>{
  state.setPassword.mockClear();state.user.managedSignIn=true;const view=render(<PasswordSettingsSection/>);
- try{expect(screen.getByText(/Managed sign-in password changes/)).toBeVisible();expect(screen.queryByRole('button',{name:'Set password'})).toBeNull();expect(state.setPassword).not.toHaveBeenCalled();}finally{view.unmount();state.user.managedSignIn=false;}
+ try{expect(screen.getByText(/Change your managed password/)).toBeVisible();expect(screen.queryByRole('button',{name:'Set password'})).toBeNull();expect(state.setPassword).not.toHaveBeenCalled();}finally{view.unmount();state.user.managedSignIn=false;}
 });

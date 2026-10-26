@@ -1,5 +1,6 @@
 "use client";
 
+import { managedAddress, managedRecoveryEnabled, resetManagedPassword } from '@/app/lib/managedSignIn';
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -46,6 +47,9 @@ const RESET_ERROR_MESSAGES = authMessages({
 
 function ResetPasswordContent() {
     const searchParams = useSearchParams();
+    const [managed] = useState(() => searchParams.get('managed') === '1' && !!managedAddress());
+    const [managedToken] = useState(() => searchParams.get('token') ?? '');
+    const [managedError] = useState(() => !!searchParams.get('error'));
     const [ready, setReady] = useState(false);
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
@@ -70,6 +74,13 @@ function ResetPasswordContent() {
     useEffect(() => {
         if (isVerifyingPreview || isUnavailablePreview) return;
 
+        if(managed) {
+            const url=new URL(window.location.href);
+            if(url.searchParams.has('token')) {url.searchParams.delete('token');window.history.replaceState(window.history.state,'',url.href);}
+            if(!managedToken||managedError)setError('This password-reset link is invalid or has expired.');
+            else if(!managedRecoveryEnabled())setError('Password recovery is not available yet.');
+            setReady(true);return;
+        }
         let cancelled = false;
         void getAuthSession()
             .then((session) => {
@@ -103,7 +114,7 @@ function ResetPasswordContent() {
         return () => {
             cancelled = true;
         };
-    }, [isUnavailablePreview, isVerifyingPreview]);
+    }, [isUnavailablePreview, isVerifyingPreview, managed, managedToken, managedError]);
 
     async function handleSubmit(event: React.FormEvent) {
         event.preventDefault();
@@ -124,7 +135,8 @@ function ResetPasswordContent() {
 
         setLoading(true);
         try {
-            await updateAuthPassword(password, true);
+            if(managed)await resetManagedPassword(password, managedToken);
+            else await updateAuthPassword(password, true);
             setSuccess(true);
         } catch (caught) {
             const described = describeError(caught, {

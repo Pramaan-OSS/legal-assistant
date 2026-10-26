@@ -347,3 +347,20 @@ export async function streamPrivateStorageObject(bucket: string, path: string, m
  finally { await dispatcher?.close(); }
  return count;
 }
+
+export type ManagedRecoverySender = { host: string; port: number; username: string; password: string; senderEmail: string; senderName: string };
+/** New published id through the existing client's generic capability call; SDK stays pinned. */
+export async function configureManagedRecovery(input: ManagedRecoverySender, idempotencyKey: string): Promise<{ recovery: { enabled: boolean; senderDomain?: string } }> {
+  if (!idempotencyKey || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(input.senderEmail) || /(^|\.)pramaan\.(dev|one|ai|com)$/i.test(input.senderEmail.split('@')[1] ?? '')) throw new UserFacingError('Use a sender on your own verified domain.');
+  try {
+    const client = await pramaan();
+    const call = client.call as (id: string, input: unknown, options: RunOptions) => Promise<unknown>;
+    const result = await call.call(client, 'auth.backend.email.set', input, { idempotencyKey });
+    const recovery = (result as { recovery?: { enabled?: boolean; senderDomain?: string } })?.recovery;
+    if (typeof recovery?.enabled !== 'boolean' || recovery.enabled && recovery.senderDomain?.toLowerCase() !== input.senderEmail.split('@')[1]?.toLowerCase()) throw new Error('Unconfirmed recovery setup');
+    return { recovery: { enabled: recovery.enabled, ...(recovery.senderDomain ? { senderDomain: recovery.senderDomain } : {}) } };
+  } catch (error) {
+    const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : 'internal';
+    throw new CapabilityCallError(code, 'auth.backend.email.set' as CapabilityId);
+  }
+}

@@ -20,3 +20,7 @@ it('an explicit test runtime cannot fall through to another runtime',()=>{
 it.each([null,{authUrl:'http://signin.example.test'},{}])('keeps invalid public settings unavailable: %s',value=>{
  publish(value);vi.stubEnv('MANAGED_RUNTIME_DIR',resolve(directory,'.runtime'));expect(publicManagedSettings()).toBeNull();
 });
+it('publishes only the enabled recovery flag with the address',()=>{
+ publish({authUrl:'https://signin.example.test/auth',recoveryEnabled:true,password:'private-not-published'});vi.stubEnv('MANAGED_RUNTIME_DIR',resolve(directory,'.runtime'));
+ expect(publicManagedSettings()).toEqual({authUrl:'https://signin.example.test/auth',recoveryEnabled:true});
+});

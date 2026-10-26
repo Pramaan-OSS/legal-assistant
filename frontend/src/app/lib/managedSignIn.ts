@@ -1,5 +1,6 @@
 'use client';
 import { completeManagedReturn } from '@/shared/lib/managedReturn';
+import { UserVisibleError } from './userFacingError';
 import type { AuthUser } from './authApi';
 export function managedAddress():string|null {
  if(typeof document==='undefined')return null;
@@ -38,4 +39,19 @@ export async function managedSocial() {
  await start();const callbackURL=new URL('/auth/managed/return',window.location.origin).href;
  const result=await (await client()).signIn.social({provider:'google',callbackURL});
  if(result.error)throw new Error('Managed sign-in could not start. Try again.');
+}
+
+export function managedRecoveryEnabled(): boolean {
+ try { return JSON.parse(document.getElementById('managed-auth-config')?.textContent ?? 'null')?.recoveryEnabled === true; } catch { return false; }
+}
+export async function requestManagedPasswordReset(email: string) {
+ if(!managedRecoveryEnabled())throw new UserVisibleError('Password recovery is not available yet. Ask the app owner to configure its recovery sender.',{kind:'unavailable'});
+ const result=await (await client()).requestPasswordReset({email,redirectTo:new URL('/reset-password?managed=1',window.location.origin).href});
+ if(result.error)throw new UserVisibleError('The reset request could not be confirmed. Try again later.',{kind:'unavailable'});
+}
+export async function resetManagedPassword(newPassword: string, token: string) {
+ if(!managedRecoveryEnabled())throw new UserVisibleError('Password recovery is not available yet.',{kind:'unavailable'});
+ if(!token)throw new Error('This reset link is invalid or has expired. Request a new one.');
+ const result=await (await client()).resetPassword({newPassword,token});
+ if(result.error)throw new UserVisibleError('The password could not be changed. The link may be invalid or expired. Request a new one.',{kind:'validation'});
 }

@@ -85,3 +85,18 @@ describe("ResetPasswordPage", () => {
         ).toBeInTheDocument();
     });
 });
+
+it('managed reset removes its token once without repeating the page update', async () => {
+ const auth = { resetPassword: vi.fn().mockResolvedValue({data:{},error:null}) };
+ vi.doMock('better-auth/client',()=>({createAuthClient:()=>auth}));
+ const config=document.createElement('script');config.id='managed-auth-config';config.type='application/json';config.textContent=JSON.stringify({authUrl:'https://signin.example.test/api/auth',recoveryEnabled:true});document.body.append(config);
+ searchParams.set('managed','1');searchParams.set('token','one-use-fixture');history.replaceState(null,'','/reset-password?managed=1&token=one-use-fixture');
+ const replace=vi.spyOn(history,'replaceState');getAuthSession.mockClear();updateAuthPassword.mockClear();
+ const view=render(<ResetPasswordPage/>);
+ try {
+  await submitPassword('New-private-password-2948');
+  expect(await screen.findByRole('heading',{name:'Password updated'})).toBeVisible();
+  expect(replace).toHaveBeenCalledTimes(1);expect(location.search).not.toContain('token');
+  expect(getAuthSession).not.toHaveBeenCalled();expect(updateAuthPassword).not.toHaveBeenCalled();
+ } finally {view.unmount();replace.mockRestore();config.remove();searchParams.delete('managed');searchParams.delete('token');history.replaceState(null,'','/');vi.doUnmock('better-auth/client');}
+});

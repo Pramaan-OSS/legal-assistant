@@ -1,7 +1,7 @@
 "use client";
 
-import { managedAddress } from '@/app/lib/managedSignIn';
-import { useState } from "react";
+import { managedAddress, requestManagedPasswordReset } from '@/app/lib/managedSignIn';
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { InputUI } from "@/shared/ui/InputUI";
 import { PillButtonUI } from "@/shared/ui/PillButtonUI";
@@ -39,6 +39,8 @@ const DELIVERY_FAILURE_KINDS: ReadonlySet<UserErrorKind> = new Set([
 ]);
 
 export default function ForgotPasswordPage() {
+    const [managed, setManaged] = useState(false);
+    useEffect(() => {setManaged(!!managedAddress());}, []);
     const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
@@ -48,7 +50,8 @@ export default function ForgotPasswordPage() {
         setLoading(true);
         setError(null);
         try {
-            await requestPasswordReset(email.trim());
+            if(managedAddress())await requestManagedPasswordReset(email.trim());
+            else await requestPasswordReset(email.trim());
             setSubmitted(true);
         } catch (caught) {
             const described = describeError(caught, {
@@ -74,7 +77,6 @@ export default function ForgotPasswordPage() {
         await sendResetLink();
     }
 
-    if(managedAddress())return <main className="mx-auto my-12 max-w-md p-6"><h1>Password recovery</h1><p>Managed sign-in password recovery is not available in this app yet.</p><Link href="/login">Return to sign-in</Link></main>;
     return (
         <div
             className={`relative flex min-h-dvh justify-center bg-gray-50/80 px-6 ${
@@ -118,6 +120,7 @@ export default function ForgotPasswordPage() {
                                 Enter your account email and we will send you a
                                 secure reset link.
                             </p>
+                            {managed && <p className="mt-2 text-sm">Managed password recovery is not yet live-verified.</p>}
                             <form
                                 onSubmit={handleSubmit}
                                 className="mt-6 space-y-4"

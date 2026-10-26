@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { prepareDatabase, prepareManagedSignIn, readManagedState } from '../managedServices';
+import { prepareDatabase, prepareManagedSignIn, readManagedState, writePublicSignInConfiguration } from '../managedServices';
 import { setPramaanClientForTests } from '../pramaan';
 let directory:string;const call=vi.fn();
 beforeEach(()=>{vi.stubEnv('WORD_ADDIN_URL','');vi.stubEnv('LOCAL_JWT_SECRET','private-startup-session-secret-for-tests');mkdirSync(resolve('../.scratch'),{recursive:true});directory=mkdtempSync(resolve('../.scratch/database-'));call.mockReset();setPramaanClientForTests({call});});
@@ -91,4 +91,27 @@ it('explains existing credentials are needed and never silently switches an exis
  call.mockResolvedValue({status:'ready',created:false});
  await expect(prepareDatabase(directory,vi.fn())).rejects.toThrow('Restore its saved private runtime settings');
  expect(readManagedState(directory).database).toBeUndefined();expect(call.mock.calls[0][2].idempotencyKey).toEqual(expect.any(String));
+});
+
+it('configures verified-domain recovery once and publishes only readiness',async()=>{
+ vi.stubEnv('APP_URL','http://localhost:3000');vi.stubEnv('MANAGED_RECOVERY_SENDER_EMAIL','accounts@example.com');vi.stubEnv('MANAGED_RECOVERY_SMTP_HOST','smtp.example.com');vi.stubEnv('MANAGED_RECOVERY_SMTP_USERNAME','private-user');vi.stubEnv('MANAGED_RECOVERY_SMTP_PASSWORD','private-password');
+ call.mockImplementation(async(id)=>id==='auth.backend.provision'?{status:'ready',authUrl:'https://auth.example.com/auth',jwksUrl:'https://auth.example.com/keys'}:{recovery:{enabled:true,senderDomain:'example.com'}});
+ await prepareManagedSignIn(directory,vi.fn());await prepareManagedSignIn(directory,vi.fn());
+ expect(call.mock.calls.filter(row=>row[0]==='auth.backend.email.set')).toHaveLength(1);
+ expect(readManagedState(directory).recovery?.enabled).toBe(true);
+ expect(readFileSync(resolve(directory,'managed.json'),'utf8')).not.toContain('private-password');
+ writePublicSignInConfiguration(directory);expect(JSON.parse(readFileSync(resolve(directory,'public-auth.json'),'utf8'))).toMatchObject({recoveryEnabled:true});
+});
+it.each(['accounts@pramaan.dev','accounts@updates.pramaan.one'])('refuses platform sender %s before configuring recovery',async sender=>{
+ vi.stubEnv('APP_URL','http://localhost:3000');vi.stubEnv('MANAGED_RECOVERY_SENDER_EMAIL',sender);vi.stubEnv('MANAGED_RECOVERY_SMTP_HOST','smtp.example.com');vi.stubEnv('MANAGED_RECOVERY_SMTP_USERNAME','private-user');vi.stubEnv('MANAGED_RECOVERY_SMTP_PASSWORD','private-password');
+ call.mockResolvedValue({status:'ready',authUrl:'https://auth.example.com/auth',jwksUrl:'https://auth.example.com/keys'});
+ await expect(prepareManagedSignIn(directory,vi.fn())).rejects.toThrow();
+ expect(call.mock.calls.filter(row=>row[0]==='auth.backend.email.set')).toHaveLength(0);expect(readManagedState(directory).recovery?.enabled).toBe(false);
+});
+it.each(['invalid_request','not_found'])('recovery %s never publishes enabled controls',async code=>{
+ vi.stubEnv('APP_URL','http://localhost:3000');vi.stubEnv('MANAGED_RECOVERY_SENDER_EMAIL','accounts@example.com');vi.stubEnv('MANAGED_RECOVERY_SMTP_HOST','smtp.example.com');vi.stubEnv('MANAGED_RECOVERY_SMTP_USERNAME','private-user');vi.stubEnv('MANAGED_RECOVERY_SMTP_PASSWORD','private-password');
+ call.mockImplementation(async(id)=>{if(id==='auth.backend.provision')return {status:'ready',authUrl:'https://auth.example.com/auth',jwksUrl:'https://auth.example.com/keys'};throw {code};});
+ if(code==='not_found')expect(await prepareManagedSignIn(directory,vi.fn())).toEqual({managed:true});
+ else await expect(prepareManagedSignIn(directory,vi.fn())).rejects.toThrow();
+ expect(readManagedState(directory).recovery?.enabled).toBe(false);
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { requestManagedPasswordReset } from "@/app/lib/managedSignIn";
 import { useState } from "react";
 import { authInputUIClassName } from "@/shared/ui/AuthStylesUI";
 import {
@@ -101,7 +102,8 @@ export function PasswordSettingsSection() {
     setPasswordResetSending(true);
     setPasswordStatus(null);
     try {
-      await requestPasswordReset(user.email);
+      if(user.managedSignIn)await requestManagedPasswordReset(user.email);
+      else await requestPasswordReset(user.email);
       setPasswordStatus(`Password-reset instructions sent to ${user.email}.`);
     } catch (error) {
       setPasswordStatus(
@@ -132,7 +134,7 @@ export function PasswordSettingsSection() {
     setConfirmPassword("");
   }
 
-  if(user?.managedSignIn)return <section className="space-y-3"><SettingsHeading>Password</SettingsHeading><GlassCardUI><SettingsDescription>Managed sign-in password changes and recovery are not available in this app yet. Local account password controls do not change your managed sign-in.</SettingsDescription></GlassCardUI></section>;
+  if(user?.managedSignIn)return <section className="space-y-3"><SettingsHeading>Password</SettingsHeading><GlassCardUI><SettingsDescription>Change your managed password using an email reset link. This flow is not yet live-verified.</SettingsDescription><PillButtonUI tone="black" disabled={passwordResetSending || !user.email} onClick={() => void sendPasswordReset()}>Change password</PillButtonUI>{passwordStatus && <p role="status">{passwordStatus}</p>}</GlassCardUI></section>;
   return (
     <section className="space-y-3">
       <SettingsHeading>Password</SettingsHeading>

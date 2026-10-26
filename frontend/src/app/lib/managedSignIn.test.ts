@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-const auth=vi.hoisted(()=>({signIn:{email:vi.fn(),social:vi.fn()},signUp:{email:vi.fn()},$fetch:vi.fn()}));
+const auth=vi.hoisted(()=>({signIn:{email:vi.fn(),social:vi.fn()},signUp:{email:vi.fn()},requestPasswordReset:vi.fn(),resetPassword:vi.fn(),$fetch:vi.fn()}));
 vi.mock('better-auth/client',()=>({createAuthClient:()=>auth}));
-import { finishManagedSignIn, managedAddress, managedEmail, managedSocial } from './managedSignIn';
+import { finishManagedSignIn, managedAddress, managedEmail, managedSocial, requestManagedPasswordReset, resetManagedPassword } from './managedSignIn';
 beforeEach(()=>{
  const script=document.createElement('script');script.id='managed-auth-config';script.type='application/json';script.textContent=JSON.stringify({authUrl:'https://signin.example.test/api/auth'});document.body.append(script);
  sessionStorage.clear();auth.signIn.email.mockReset().mockResolvedValue({data:{},error:null});auth.signUp.email.mockReset().mockResolvedValue({data:{},error:null});auth.signIn.social.mockReset().mockResolvedValue({data:{},error:null});auth.$fetch.mockReset().mockResolvedValue({data:{token:'private-session-proof'},error:null});
@@ -33,4 +33,19 @@ it('finishes the callback cookie before requesting a token and removes the verif
 it('a refused callback cookie never requests a token or opens an app session',async()=>{
  const key='neon_auth_session_verifier';history.replaceState(null,'','/auth/managed/return?'+key+'=test-verifier');sessionStorage.setItem('managed-sign-in-state','browser-flow');auth.$fetch.mockResolvedValueOnce({error:{status:401}});
  try{await expect(finishManagedSignIn()).rejects.toThrow('could not be verified');expect(auth.$fetch).toHaveBeenCalledTimes(1);expect(fetch).not.toHaveBeenCalled();expect(location.search).toBe('');}finally{history.replaceState(null,'','/');}
+});
+
+it('managed recovery uses only the backend reset flow and requires published readiness',async()=>{
+ await expect(requestManagedPasswordReset('reader@example.test')).rejects.toThrow('not available yet');
+ document.getElementById('managed-auth-config')!.textContent=JSON.stringify({authUrl:'https://signin.example.test/api/auth',recoveryEnabled:true});
+ auth.requestPasswordReset.mockResolvedValue({data:{},error:null});auth.resetPassword.mockResolvedValue({data:{},error:null});
+ await requestManagedPasswordReset('reader@example.test');
+ expect(auth.requestPasswordReset).toHaveBeenCalledWith({email:'reader@example.test',redirectTo:new URL('/reset-password?managed=1',location.origin).href});
+ await resetManagedPassword('new-private-password','one-use-token');
+ expect(auth.resetPassword).toHaveBeenCalledWith({newPassword:'new-private-password',token:'one-use-token'});
+ expect(fetch).not.toHaveBeenCalled();
+ auth.resetPassword.mockResolvedValue({error:{status:400}});
+ await expect(resetManagedPassword('new-private-password','expired-token')).rejects.toThrow('invalid or expired');
+ auth.requestPasswordReset.mockResolvedValue({error:{status:503}});
+ await expect(requestManagedPasswordReset('reader@example.test')).rejects.toThrow('could not be confirmed');
 });

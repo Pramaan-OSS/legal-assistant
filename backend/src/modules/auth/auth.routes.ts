@@ -350,7 +350,7 @@ authRouter.post("/handoff", asyncRoute(async (req, res) => {
 }));
 
 authRouter.post("/password-reset", asyncRoute(async (req, res) => {
-  if(managedSignInConfiguration())return res.status(409).json({code:"managed_credentials_unavailable",detail:"Managed sign-in password recovery is not available in this app yet."});
+  if(managedSignInConfiguration())return res.status(409).json({code:"managed_credentials_unavailable",detail:"Use the managed password recovery screen to request a reset link."});
   const email = emailSchema.safeParse(req.body?.email);
   if (email.success) {
     try {
@@ -389,7 +389,7 @@ authRouter.post("/logout", asyncRoute(async (req, res) => {
 }));
 
 authRouter.patch("/email", requireAuth, asyncRoute(async (req, res) => {
-  if(res.locals.managedSignIn)return res.status(409).json({code:"managed_credentials_unavailable",detail:"Managed sign-in email and password changes are not available in this app yet."});
+  if(res.locals.managedSignIn)return res.status(409).json({code:"managed_credentials_unavailable",detail:"Managed email-address changes are not available in this app yet."});
   const email = emailSchema.safeParse(req.body?.email);
   if (!email.success) return invalidBody(res);
   const client = cookieClient(req, res);
@@ -404,7 +404,7 @@ authRouter.patch("/email", requireAuth, asyncRoute(async (req, res) => {
 }));
 
 authRouter.patch("/password", requireAuth, asyncRoute(async (req, res) => {
-  if(res.locals.managedSignIn)return res.status(409).json({code:"managed_credentials_unavailable",detail:"Managed sign-in email and password changes are not available in this app yet."});
+  if(res.locals.managedSignIn)return res.status(409).json({code:"managed_credentials_unavailable",detail:"Use the managed password recovery screen to change your password."});
   const parsed = passwordSchema.safeParse(req.body);
   if (!parsed.success) return invalidBody(res, parsed.error.issues);
   const client = cookieClient(req, res);
