@@ -29,8 +29,8 @@ jobs:
       matrix:
         check: [lint, typecheck, test-ui, build]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -106,8 +106,8 @@ jobs:
           PGRST_JWT_SECRET: ci-only-jwt-secret-at-least-32-characters-long
         ports: [3001:3000]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: npm
